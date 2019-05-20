@@ -4,7 +4,7 @@
 
 extern crate iron;
 #[macro_use] extern crate log;
-extern crate time;
+use std::time::{SystemTime};
 
 use iron::{AfterMiddleware, BeforeMiddleware, IronResult, IronError, Request, Response};
 use iron::typemap::Key;
@@ -46,18 +46,18 @@ impl Logger {
 }
 
 struct StartTime;
-impl Key for StartTime { type Value = time::Tm; }
+impl Key for StartTime { type Value = (SystemTime, time::Tm); }
 
 impl Logger {
     fn initialise(&self, req: &mut Request) {
-        req.extensions.insert::<StartTime>(time::now());
+        req.extensions.insert::<StartTime>((SystemTime::now(), time::now()));
     }
 
     fn log(&self, req: &mut Request, res: &Response) -> IronResult<()> {
-        let entry_time = *req.extensions.get::<StartTime>().unwrap();
+        let (sys_time, entry_time) = *req.extensions.get::<StartTime>().unwrap();
 
-        let response_time = time::now() - entry_time;
-        let response_time_ms = (response_time.num_seconds() * 1000) as f64 + (response_time.num_nanoseconds().unwrap_or(0) as f64) / 1000000.0;
+        let response_time = sys_time.elapsed().unwrap();
+        let response_time_ms = response_time.as_millis();
 
         {
             let render = |fmt: &mut Formatter, text: &FormatText| {
